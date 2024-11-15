@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pair Code App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .main {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+
+        .box {
+            margin: 20px;
+        }
+
+        #text {
+            font-size: 18px;
+        }
+
+        .input-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 18px;
+            width: 80%;
+            margin-bottom: 10px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .centered-text {
+            text-align: center;
+        }
+
+        #waiting-message {
+            font-size: 16px;
+            color: #f0ad4e;
+        }
+
+        .copy-text {
+            color: red;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .copy-text span {
+            color: black;
+            font-weight: normal;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="main">
+            <div class="box" id="box">
+                <div id="text">
+                    <i class="fa fa-user"></i>
+                    <h3 class="centered-text">Link with phone number</h3>
+                    <br>
+                    <h6>⚙Enter your number with country code.⚙</h6>
+                    <div class="input-container">
+                        <input placeholder="+94742274855" type="text" id="number" name="">
+                        <button id="submit">Enter</button>
+                    </div>
+                    <a id="waiting-message" class="centered-text" style="display: none;">In process...</a>
+                    <br><br>
+                    <main id="pair"></main>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.0.0-alpha.1/axios.min.js"></script>
+    <script>
+        const a = document.getElementById("pair");
+        const b = document.getElementById("submit");
+        const c = document.getElementById("number");
+        const box = document.getElementById("box");
+        const waitingMessage = document.getElementById("waiting-message");
+
+        // Copy function to copy code
+        async function Copy() {
+            const text = document.getElementById("copy").innerText;
+            const obj = document.getElementById("copy");
+            await navigator.clipboard.writeText(obj.innerText.replace('CODE: ', ''));
+            obj.innerText = "COPIED";
+            obj.style = "color:blue;font-weight:bold";
+            setTimeout(() => {
+                obj.innerText = text;
+                obj.style = "color:black;font-weight:bold";
+            }, 500);
+        }
+
+        b.addEventListener("click", async (e) => {
+            e.preventDefault();
+
+            if (!c.value) {
+                a.innerHTML = '<a style="color:black;font-weight:bold">❗Enter your WhatsApp number with country code.</a><br><br>';
+                return;
+            }
+
+            const cleanNumber = c.value.replace(/[^0-9]/g, "");
+            if (cleanNumber.length < 11) {
+                a.innerHTML = '<a style="color:black;font-weight:bold">❌ Invalid number format ❌</a><br><br>';
+                return;
+            }
+
+            // Format number to +xxx xxx xxx xxx style
+            let formattedNumber = `+${cleanNumber.slice(0, 3)} ${cleanNumber.slice(3, 6)} ${cleanNumber.slice(6, 9)} ${cleanNumber.slice(9)}`;
+            c.value = formattedNumber;
+
+            // Show waiting message
+            a.innerHTML = '<a style="color:black;font-weight:bold">💚 Please wait 💚</a><br><br>';
+            waitingMessage.style.display = 'inline';
+
+            try {
+                // Make a request to your backend
+                const response = await axios.get(`https://pair-code-production.up.railway.app/pair?number=${cleanNumber}`);
+                const data = response.data;
+
+                // Check if the response contains the code
+                if (data && data.code) {
+                    const code = data.code;
+                    a.innerHTML = `<font id="copy" onclick="Copy()" class="copy-text">CODE: <span>${code}</span></font><br><br><br>`;
+                } else {
+                    console.error('Code not found in response:', data);
+                    a.innerHTML = '<a style="color:black;font-weight:bold">❌ Invalid response from the server. Please try again. ❌</a><br><br>';
+                }
+            } catch (error) {
+                console.error("Error during API call:", error);
+                if (error.response) {
+                    a.innerHTML = `<a style="color:black;font-weight:bold">❌ Server Error: ${error.response.status} - ${error.response.statusText}. Please try again later. ❌</a><br><br>`;
+                } else if (error.request) {
+                    a.innerHTML = '<a style="color:black;font-weight:bold">❌ No response from server. Please check your internet connection. ❌</a><br><br>';
+                } else {
+                    a.innerHTML = `<a style="color:black;font-weight:bold">❌ ${error.message}. Please try again later. ❌</a><br><br>`;
+                }
+            } finally {
+                waitingMessage.style.display = 'none'; // Hide the waiting message
+            }
+        });
+    </script>
+</body>
+
+</html>
